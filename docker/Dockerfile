@@ -24,12 +24,13 @@ SHELL ["/bin/bash", "-c"]
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
       build-essential \
       cmake \
-      cuda-command-line-tools-${CUDA/./-} \
+      cuda-command-line-tools-11-3 \
       git \
       hmmer \
       kalign \
       tzdata \
       wget \
+      nvidia-cuda-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Compile HHsuite from source.
@@ -71,6 +72,7 @@ RUN pip3 install --upgrade pip \
 # Apply OpenMM patch.
 WORKDIR /opt/conda/lib/python3.7/site-packages
 RUN patch -p0 < /app/alphafold/docker/openmm.patch
+RUN ln -s /usr/lib/x86_64-linux-gnu/libcusolver.so /usr/lib/x86_64-linux-gnu/libcusolver.so.11
 
 # We need to run `ldconfig` first to ensure GPUs are visible, due to some quirk
 # with Debian. See https://github.com/NVIDIA/nvidia-docker/issues/1399 for
@@ -82,4 +84,7 @@ RUN echo $'#!/bin/bash\n\
 ldconfig\n\
 python /app/alphafold/run_alphafold.py "$@"' > /app/run_alphafold.sh \
   && chmod +x /app/run_alphafold.sh
+
+ENV LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH"
+
 ENTRYPOINT ["/app/run_alphafold.sh"]
